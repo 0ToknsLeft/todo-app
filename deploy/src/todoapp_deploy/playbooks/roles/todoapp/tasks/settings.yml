@@ -1,0 +1,35 @@
+---
+- name: Copy the deployment's settings to the host
+  ansible.builtin.copy:
+    src: "{{ todoapp_settings_source }}"
+    dest: "{{ todoapp_deployment_settings }}"
+    mode: "0600"
+  when: todoapp_settings_source | length > 0
+
+- name: Look for the deployment's settings on the host
+  ansible.builtin.stat:
+    path: "{{ todoapp_deployment_settings }}"
+  register: todoapp_deployment_settings_file
+
+- name: Read the deployment's settings
+  ansible.builtin.slurp:
+    src: "{{ todoapp_deployment_settings }}"
+  register: todoapp_deployment_settings_content
+  when: todoapp_deployment_settings_file.stat.exists
+
+- name: Look for the Data Protection certificate on the host
+  ansible.builtin.stat:
+    path: "{{ todoapp_config_dir }}/dataprotection.pfx"
+  register: todoapp_data_protection_certificate
+
+- name: Look for the HTTPS certificate on the host
+  ansible.builtin.stat:
+    path: "{{ todoapp_tls_dir }}/fullchain.pem"
+  register: todoapp_https_certificate
+
+- name: Write the app's settings over the deployment's, with the certificates the host has
+  ansible.builtin.template:
+    src: appsettings.Production.json.j2
+    dest: "{{ todoapp_config_dir }}/appsettings.Production.json"
+    mode: "0644"
+  notify: Restart the app
